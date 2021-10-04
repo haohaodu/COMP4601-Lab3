@@ -27,77 +27,145 @@ const getOnePopularPage = async (req, res) => {
     .status(200)
     .json({ message: "Popular pages retrieved 4", data: [] });
 };
-const seedPages = async (req, res) => {
-  // for 1 page
 
-  // loop through all links
+const createPage = async (url) => {
+  const page = await Page.find({ url: url })
+    .then((data) => {
+      return data;
+    })
+    .catch((e) => console.log("error finding page: ", e));
 
-  // add each links to outgoingList array
-
-  // search each link in Page array and add to it if needed
-
-  console.log("one");
-  let popularTally = {};
-  console.log("start");
-
-  const findOnePage = async (url) => {
-    const page = await Page.find({ url: url })
-      .then(({ data }) => {
-        console.log("data: ", data);
-        return data;
+  // if page not found, create page in DB
+  if (!page || page.length === 0) {
+    console.log("creating pages...");
+    await Page.create({
+      url: url,
+      incoming_links: [],
+      outgoing_links: [],
+    })
+      .then(() => {
+        console.log(`page ${url} has been created`);
       })
-      .catch((e) => {
-        console.log("something went wrong finding page with url: ", url);
-        console.log("error: ", e);
-      });
-  };
+      .catch((e) => console.log("e ", e));
+  }
+};
+
+const addIncoming = async (url, incomingUrl) => {
+  // createPage if does not exist in DB yet
+  const page = await Page.find({ url: url })
+    .then((data) => {
+      return data;
+    })
+    .catch((e) => console.log("error finding page: ", e));
+
+  // if page not found, create page in DB
+  if (!page || page.length === 0) {
+    await Page.create({
+      url: url,
+      incoming_links: [],
+      outgoing_links: [],
+    }).catch((e) => console.log("e ", e));
+  }
+
+  await Page.findOneAndUpdate(
+    { url: url },
+    { $push: { incoming_links: incomingUrl } }
+  ).catch((e) => {
+    console.log("something went wrong finding page with url: ", url);
+    console.log("error: ", e);
+  });
+};
+
+const addOutgoing = async (url, outgoingUrls) => {
+  // createPage if does not exist in DB yet
+  const page = await Page.find({ url: url })
+    .then((data) => {
+      return data;
+    })
+    .catch((e) => console.log("error finding page: ", e));
+
+  // if page not found, create page in DB
+  if (!page || page.length === 0) {
+    console.log("creating pages...");
+    await Page.create({
+      url: url,
+      incoming_links: [],
+      outgoing_links: [],
+    })
+      .then(() => {
+        console.log(`page ${url} has been created`);
+      })
+      .catch((e) => console.log("e ", e));
+  }
+
+  // update page's outgoing list with all past in URLs
+  await Page.findOneAndUpdate(
+    { url: url },
+    {
+      $push: {
+        outgoing_links: outgoingUrls,
+      },
+    }
+  ).catch((e) => {
+    console.log("something went wrong finding page with url: ", url);
+    console.log("error: ", e);
+  });
+
+  console.log("FINAL LIST: ", await Page.find());
+};
+
+let crawledList = [];
+
+const seedPages = async (req, res) => {
+  const { seedUrl } = req.query;
+  let popularTally = {};
 
   const crawl = new Crawler({
-    maxConnections: 10, //use this for parallel, rateLimit for individual
-    // rateLimit: 10000,
-
-    // This will be called for each crawled page
+    maxConnections: 10,
+    skipDuplicates: true,
     callback: (error, res, done) => {
       if (error) {
         console.log(error);
       } else {
-        let $ = res.$; //get cheerio data, see cheerio docs for info'cibsike,kig/
-        let links = $("a");
         let outgoingList = [];
+        let $ = res.$;
+        let links = $("a");
 
-        // loop through all links in page
+        // loop through all links on page
         $(links).each((i, link) => {
           let urlNum = $(link).text();
           let url = `https://people.scs.carleton.ca/~davidmckenney/fruitgraph/${urlNum}.html`;
+
+          // append all the outgoing links to a local array
           outgoingList.push(url);
 
-          const page = findOnePage(url);
-
-          if (popularTally.hasOwnProperty(urlNum)) {
-            popularTally[urlNum]++;
-          } else {
-            popularTally[urlNum] = 1;
-            // crawl.queue(
-            //   `https://people.scs.carleton.ca/~davidmckenney/fruitgraph/${urlVal}.html`
-            // );
-          }
+          // add each link to the URLs 'incoming' array
+          addIncoming(urlNum, seedUrl);
+          // if (!crawledList.includes(url)) {
+          //   crawl.queue(url);
+          //   crawledList.push(url);
+          // }
         });
-        console.log("outgoingList: ", outgoingList);
+
+        // add all to outgoing list array
+        console.log("outgoing list: ", outgoingList);
+        addOutgoing(seedUrl, outgoingList);
       }
       done();
     },
   });
 
   crawl.on("drain", () => {
-    console.log("popular tally: ", popularTally);
-    console.log("Done.");
+    console.log("\n\nFinished web crawling.\n\n");
   });
 
-  await crawl.queue(
-    "https://people.scs.carleton.ca/~davidmckenney/fruitgraph/N-0.html"
+  console.log(
+    "crawl: ",
+    `https://people.scs.carleton.ca/~davidmckenney/fruitgraph/${seedUrl}.html`
   );
-
-  console.log("returning now...");
+  await crawl.queue(
+    `https://people.scs.carleton.ca/~davidmckenney/fruitgraph/${seedUrl}.html`
+  );
 
   return res
     .status(200)

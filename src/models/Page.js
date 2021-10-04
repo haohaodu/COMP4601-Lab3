@@ -8,4 +8,4 @@ const PageSchema = mongoose.Schema({
   outgoing_links: { type: Array, default: [] },
 });
 
-module.exports = mongoose.model("Pages", PageSchema);
+module.exports = mongoose.model("Pages", ProductSchema);

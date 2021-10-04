@@ -34,7 +34,7 @@ const seedPages = async (req, res) => {
 
   // add each links to outgoingList array
 
-  // search each link in Page array and add to it if needed
+  // search each link in Page array and add to its 'incoming' array
 
   console.log("one");
   let popularTally = {};

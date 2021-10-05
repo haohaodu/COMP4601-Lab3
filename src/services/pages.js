@@ -25,12 +25,19 @@ const getPages = async (req, res) => {
 
 const getOnePage = async (req, res) => {
   const { id } = req.params;
+  //const { url } = req.params;
   const page = await Page.findById(id).catch((e) =>
     console.log(`Error when retrieving page with id ${id}: ${e}`)
   );
 
+  /*const page = await Page.aggregate([
+    { $group: { _id: {url : "$url"} } }
+  ]).catch((e) =>
+    console.log(`Error when retrieving page with url ${url}: ${e}`)
+  );*/
+
   if (!page)
-    return res.status(404).json({ message: `Product with id ${id} not found` });
+    return res.status(404).json({ message: `Page with id ${id} not found` });
 
   return res.status(200).json({ data: page });
 };
@@ -48,12 +55,21 @@ const getPopularPages = async (req, res) => {
   //Do I use '$size'?
 
   //use db.collection.find()?
-  const popularPages = db.collection("pages").aggregate([
+  /*const popularPages = db.collection("pages").aggregate([
     { $unwind: "$incoming_links" },
     { $group: { _id: "url", len: { $sum: 1 } } }, //I'm not entirely sure what this does
     { $sort: { len: -1 } },
     { $limit: 10 }, //this is what gets the 10 pages with the most incoming_links
-  ]);
+  ]);*/
+
+  const popularPages = await Page.aggregate([
+    { $unwind: "$incoming_links" },
+    { $group: { _id: "$_id", len: { $sum: 1 } } }, //I'm not entirely sure what this does
+    { $sort: { len: -1 } },
+    { $limit: 10 }, //this is what gets the 10 pages with the most incoming_links
+  ]).catch((e) =>
+    console.log(`Error when retrieving the most popular pages: ${e}`)
+  );
 
   //How do I add the error checks?
   return res.status(200).json({ data: popularPages });
@@ -251,6 +267,7 @@ const seedPages = async (req, res) => {
 module.exports = {
   getPages: getPages,
   getOnePage : getOnePage,
+  getPopularPages : getPopularPages,
   testPostPage: testPostPage,
   seedPages: seedPages,
 };

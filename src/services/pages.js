@@ -58,6 +58,7 @@ const seedHelper = async (baseUrl) =>
           const title = $("title").text();
           let urlList = [];
 
+          console.log("start");
           // add all links on page to local url list
           $("a").each((i, link) => {
             let urlPath = $(link).text();
@@ -116,10 +117,13 @@ const seedPages = async (req, res) => {
   const pages = [];
   return await seedHelper(baseUrl)
     .then(async (localData) => {
+      console.log("1");
       // loop through local page graph object and put it into list
       Object.values(localData).map((page) => {
         pages.push(page);
       });
+
+      console.log("2");
       // upload local copy to DB
       await Page.insertMany(pages)
         .then(() => {

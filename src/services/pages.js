@@ -38,6 +38,8 @@ const getPopularPages = async (req, res) => {
 
   while (popularPages.length < 10) {
     //populate the array here
+
+    //Helpful link? : https://www.quickprogrammingtips.com/mongodb/how-to-find-the-document-with-the-longest-array-in-a-mongodb-collection.html
   }
 
   //Do I use '$size'?

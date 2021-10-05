@@ -127,5 +127,6 @@ const testPostPage = async (req, res) => {
 
 module.exports = {
   getPages: getPages,
+  getOnePage : getOnePage,
   testPostPage: testPostPage,
 };

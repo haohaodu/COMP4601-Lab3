@@ -4,6 +4,8 @@ const { validationResult, body, param } = require("express-validator");
 const Page = require("../models/Page");
 const Crawler = require("crawler");
 
+const BASE_URL = `https://people.scs.carleton.ca/~davidmckenney/fruitgraph`;
+
 const getPages = async (req, res) => {
   return res
     .status(200)
@@ -110,66 +112,87 @@ const addOutgoing = async (url, outgoingUrls) => {
     console.log("something went wrong finding page with url: ", url);
     console.log("error: ", e);
   });
-
-  console.log("FINAL LIST: ", await Page.find());
 };
 
-let crawledList = [];
+let crawlUrl = "";
+let pageGraph = {};
+
+const seedHelper = async (baseUrl) =>
+  new Promise((resolve, reject) => {
+    const crawl = new Crawler({
+      maxConnections: 10,
+      skipDuplicates: true,
+      callback: (error, res, done) => {
+        if (error) {
+          reject(error);
+        } else {
+          let $ = res.$;
+          const title = $("title").text();
+          let urlList = [];
+
+          // add all links on page to local url list
+          $("a").each((i, link) => {
+            let urlPath = $(link).text();
+            let fullLinkUrl = `${BASE_URL}/${urlPath}.html`;
+            urlList.push(fullLinkUrl);
+          });
+          let fullUrl = `${BASE_URL}/${title}.html`;
+
+          console.log(`progress ${Object.keys(pageGraph).length}/600`);
+          if (Object.keys(pageGraph).length >= 600) {
+            console.log("DONE");
+            return resolve(pageGraph);
+          }
+
+          // add all outgoing links to curr page if exists
+          if (pageGraph.hasOwnProperty(fullUrl))
+            pageGraph[fullUrl].outgoing_links = urlList;
+          // create new page if url does not currently exist
+          else {
+            const newPage = {
+              url: fullUrl,
+              incoming_links: [],
+              outgoing_links: urlList,
+            };
+            pageGraph[fullUrl] = newPage;
+          }
+
+          // loop through url list, and add curr page as incoming link for all urls
+          urlList.map((link) => {
+            if (pageGraph.hasOwnProperty(link)) {
+              pageGraph[link].incoming_links.push(fullUrl);
+            } else {
+              const newIncomingPage = {
+                url: link,
+                incoming_links: [fullUrl],
+                outgoing_links: [],
+              };
+              pageGraph[link] = newIncomingPage;
+            }
+
+            // re-crawl all the other urls that come up
+            crawl.queue(link);
+          });
+        }
+        done();
+      },
+    });
+    crawl.queue(baseUrl);
+  });
 
 const seedPages = async (req, res) => {
-  const { seedUrl } = req.query;
-  let popularTally = {};
-
-  const crawl = new Crawler({
-    maxConnections: 10,
-    skipDuplicates: true,
-    callback: (error, res, done) => {
-      if (error) {
-        console.log(error);
-      } else {
-        let outgoingList = [];
-        let $ = res.$;
-        let links = $("a");
-
-        // loop through all links on page
-        $(links).each((i, link) => {
-          let urlNum = $(link).text();
-          let url = `https://people.scs.carleton.ca/~davidmckenney/fruitgraph/${urlNum}.html`;
-
-          // append all the outgoing links to a local array
-          outgoingList.push(url);
-
-          // add each link to the URLs 'incoming' array
-          addIncoming(urlNum, seedUrl);
-          // if (!crawledList.includes(url)) {
-          //   crawl.queue(url);
-          //   crawledList.push(url);
-          // }
-        });
-
-        // add all to outgoing list array
-        console.log("outgoing list: ", outgoingList);
-        addOutgoing(seedUrl, outgoingList);
-      }
-      done();
-    },
-  });
-
-  crawl.on("drain", () => {
-    console.log("\n\nFinished web crawling.\n\n");
-  });
-
-  console.log(
-    "crawl: ",
-    `https://people.scs.carleton.ca/~davidmckenney/fruitgraph/${seedUrl}.html`
-  );
-  await crawl.queue(
-    `https://people.scs.carleton.ca/~davidmckenney/fruitgraph/${seedUrl}.html`
-  );
-
-  return res
-    .status(200)
-    .json({ message: "Popular pages seeded 5", data: popularTally });
+  console.log("start crawling...");
+  const baseUrl =
+    "https://people.scs.carleton.ca/~davidmckenney/fruitgraph/N-0.html";
+  return await seedHelper(baseUrl)
+    .then((localData) => {
+      console.log("finished crawling: ", localData);
+      return res.status(200).json({
+        message: "Popular pages seeded 5 succesfully",
+        data: localData,
+      });
+    })
+    .catch((e) => console.log("error crawling: ", e));
 };
 
 module.exports = {

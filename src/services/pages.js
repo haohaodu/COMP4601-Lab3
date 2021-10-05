@@ -52,69 +52,6 @@ const createPage = async (url) => {
   }
 };
 
-const addIncoming = async (url, incomingUrl) => {
-  // createPage if does not exist in DB yet
-  const page = await Page.find({ url: url })
-    .then((data) => {
-      return data;
-    })
-    .catch((e) => console.log("error finding page: ", e));
-
-  // if page not found, create page in DB
-  if (!page || page.length === 0) {
-    await Page.create({
-      url: url,
-      incoming_links: [],
-      outgoing_links: [],
-    }).catch((e) => console.log("e ", e));
-  }
-
-  await Page.findOneAndUpdate(
-    { url: url },
-    { $push: { incoming_links: incomingUrl } }
-  ).catch((e) => {
-    console.log("something went wrong finding page with url: ", url);
-    console.log("error: ", e);
-  });
-};
-
-const addOutgoing = async (url, outgoingUrls) => {
-  // createPage if does not exist in DB yet
-  const page = await Page.find({ url: url })
-    .then((data) => {
-      return data;
-    })
-    .catch((e) => console.log("error finding page: ", e));
-
-  // if page not found, create page in DB
-  if (!page || page.length === 0) {
-    console.log("creating pages...");
-    await Page.create({
-      url: url,
-      incoming_links: [],
-      outgoing_links: [],
-    })
-      .then(() => {
-        console.log(`page ${url} has been created`);
-      })
-      .catch((e) => console.log("e ", e));
-  }
-
-  // update page's outgoing list with all past in URLs
-  await Page.findOneAndUpdate(
-    { url: url },
-    {
-      $push: {
-        outgoing_links: outgoingUrls,
-      },
-    }
-  ).catch((e) => {
-    console.log("something went wrong finding page with url: ", url);
-    console.log("error: ", e);
-  });
-};
-
-let crawlUrl = "";
 let pageGraph = {};
 
 const seedHelper = async (baseUrl) =>
@@ -138,8 +75,8 @@ const seedHelper = async (baseUrl) =>
           });
           let fullUrl = `${BASE_URL}/${title}.html`;
 
-          console.log(`progress ${Object.keys(pageGraph).length}/600`);
-          if (Object.keys(pageGraph).length >= 600) {
+          console.log(`status ${Object.keys(pageGraph).length}/1000`);
+          if (Object.keys(pageGraph).length >= 1000) {
             console.log("DONE");
             return resolve(pageGraph);
           }

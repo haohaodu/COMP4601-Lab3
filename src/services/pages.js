@@ -34,6 +34,16 @@ const getOnePage = async (req, res) => {
 
 const getPopularPages = async (req, res) => {
   //need to query database for getting the most popular pages
+  let popularPages = [];
+
+  while (popularPages.length < 10) {
+    //populate the array here
+  }
+
+  //Do I use '$size'?
+
+  //use db.collection.find()?
+  db.collection("pages").find(req.query)
 };
 
 const getOnePopularPage = async (req, res) => {
@@ -58,7 +68,7 @@ const testPostPage = async (req, res) => {
       "https://zombieland-saga.fandom.com/wiki/Zombie_Land_Saga_Soundtrack"],
   })
 
-  //How do I post a url? (href element?)
+  //How do I post a url? (href element?) (Nvm about this)
 
   Page.create(page1) //this adds new page to database
     .then((data) => {

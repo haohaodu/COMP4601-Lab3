@@ -144,10 +144,10 @@ const seedHelper = async (baseUrl) =>
             return resolve(pageGraph);
           }
 
-          // add all outgoing links to curr page if exists
+          // add OUTGOING links to curr page url
           if (pageGraph.hasOwnProperty(fullUrl))
             pageGraph[fullUrl].outgoing_links = urlList;
-          // create new page if url does not currently exist
+          // create new page if it does not exist
           else {
             const newPage = {
               url: fullUrl,
@@ -157,8 +157,9 @@ const seedHelper = async (baseUrl) =>
             pageGraph[fullUrl] = newPage;
           }
 
-          // loop through url list, and add curr page as incoming link for all urls
+          // loop through url list
           urlList.map((link) => {
+            // add curr url as INCOMING link for each url
             if (pageGraph.hasOwnProperty(link)) {
               pageGraph[link].incoming_links.push(fullUrl);
             } else {
@@ -184,15 +185,30 @@ const seedPages = async (req, res) => {
   console.log("start crawling...");
   const baseUrl =
     "https://people.scs.carleton.ca/~davidmckenney/fruitgraph/N-0.html";
+  const pages = [];
   return await seedHelper(baseUrl)
-    .then((localData) => {
-      console.log("finished crawling: ", localData);
+    .then(async (localData) => {
+      // loop through local page graph object and put it into list
+      Object.values(localData).map((page) => {
+        pages.push(page);
+      });
+      // upload local copy to DB
+      await Page.insertMany(pages)
+        .then(() => {
+          console.log("seed complete");
+        })
+        .catch((e) => console.log("error while inserting", e));
       return res.status(200).json({
-        message: "Popular pages seeded 5 succesfully",
+        message: "DB succesfully seeded",
         data: localData,
       });
     })
-    .catch((e) => console.log("error crawling: ", e));
+    .catch((e) =>
+      res.status(500).json({
+        message: "Error while seeding db",
+        data: e,
+      })
+    );
 };
 
 module.exports = {

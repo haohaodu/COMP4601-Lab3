@@ -67,8 +67,8 @@ const seedHelper = async (baseUrl) =>
           });
           let fullUrl = `${BASE_URL}/${title}.html`;
 
-          console.log(`progress ${Object.keys(pageGraph).length}/600`);
-          if (Object.keys(pageGraph).length >= 600) {
+          console.log(`status ${Object.keys(pageGraph).length}/1000`);
+          if (Object.keys(pageGraph).length >= 1000) {
             console.log("DONE");
             return resolve(pageGraph);
           }

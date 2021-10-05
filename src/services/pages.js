@@ -4,17 +4,19 @@ const { validationResult, body, param } = require("express-validator");
 const Page = require("../models/Page");
 
 const getPages = async (req, res) => {
-  let { url } = req.query;
-  const pageURL = url || "";
+  //let { url } = req.query;
+  //const pageURL = url || "";
 
-  const pages = await Page.find();
+  const pages = await Page.find({
+
+  });
   //return res.status(200); // TODO: need to make this return a bunch of URLS
 
-  if (pages.length == 0) {
+  /*if (pages.length == 0) {
     return res.status(404).json({
       message: `No pages found`,
     });
-  }
+  }*/
 
   //return urls to all pages
   return res.status(200).json({data : pages});
@@ -34,22 +36,46 @@ const getOnePage = async (req, res) => {
 
 const getPopularPages = async (req, res) => {
   //need to query database for getting the most popular pages
-  let popularPages = [];
+  //let popularPages = [];
 
-  while (popularPages.length < 10) {
+  /*while (popularPages.length < 10) {
     //populate the array here
 
     //Helpful link? : https://www.quickprogrammingtips.com/mongodb/how-to-find-the-document-with-the-longest-array-in-a-mongodb-collection.html
-  }
+  }*/
 
   //Do I use '$size'?
 
   //use db.collection.find()?
-  db.collection("pages").find(req.query)
+  const popularPages = db.collection("pages").aggregate([
+    {$unwind : "$incoming_links"},
+    {$group : { _id : "url", len : { $sum : 1 } }}, //I'm not entirely sure what this does
+    {$sort : { len : -1 }},
+    {$limit : 10} //this is what gets the 10 pages with the most incoming_links
+  ])
+
+  //How do I add the error checks?
+  return res.status(200).json({data : popularPages});
 };
 
 const getOnePopularPage = async (req, res) => {
+  const { id } = req.params;
 
+  //use .findOne()?
+
+  //Or should I use .match()?
+
+  //Am I doing this right?
+  const popularPage = db.collection("pages").aggregate([
+    {$unwind : "$incoming_links"},
+    {$group : { _id : "url", len : { $sum : 1 } }}, //I'm not entirely sure what this does
+    {$sort : { len : -1 }},
+    {$limit : 10},
+    {$match : { url : id }}
+  ])
+
+  //How do I add the error checks?
+  return res.status(200).json({data : popularPage});
 };
 
 const testPostPage = async (req, res) => {
@@ -97,4 +123,9 @@ const testPostPage = async (req, res) => {
         err: err,
       });
     });
+};
+
+module.exports = {
+  getPages: getPages,
+  testPostPage: testPostPage,
 };
